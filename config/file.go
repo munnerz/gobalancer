@@ -34,7 +34,7 @@ func (f *File) GetConfig() (*Config, error) {
 		return nil, err
 	}
 
-	err = f.Memory.SaveConfig(config)
+	err = f.Memory.SaveConfig(&config)
 
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func (f *File) GetConfig() (*Config, error) {
 	return &config, nil
 }
 
-func (f *File) SaveConfig(c Config) error {
+func (f *File) SaveConfig(c *Config) error {
 	data, err := json.Marshal(c)
 
 	if err != nil {
@@ -65,20 +65,20 @@ func (f *File) SaveConfig(c Config) error {
 	return nil
 }
 
-func (f *File) SaveTCPLoadbalancers(t ...*tcp.LoadBalancer) error {
-	config, err := f.GetConfig()
+func (f *File) AddTCPLoadbalancers(t ...tcp.LoadBalancer) error {
+	err := f.Memory.AddTCPLoadbalancers(t...)
 
 	if err != nil {
 		return err
 	}
 
-	if config.Loadbalancers.TCP == nil {
-		config.Loadbalancers.TCP = t
-		return nil
+	cfg, err := f.GetConfig()
+
+	if err != nil {
+		return err
 	}
 
-	config.Loadbalancers.TCP = append(config.Loadbalancers.TCP, t...)
-	return nil
+	return f.SaveConfig(cfg)
 }
 
 func NewFileStorage(filename string) *File {
