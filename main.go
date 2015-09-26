@@ -27,6 +27,7 @@ func execute(c *config.Config) {
 				if executed[b.Name] {
 					continue
 				}
+				logging.Log("core", log.Infof, "Starting LoadBalancer '%s' (%s:%d)", b.Name, b.IP, b.Port)
 				go b.Run(done)
 				executed[b.Name] = true
 			}
@@ -54,7 +55,7 @@ func main() {
 	c, err := storage.GetConfig()
 
 	if err != nil {
-		logging.Log("core", log.Errorf, "Error loading config: %s", err.Error())
+		logging.Log("core", log.Fatalf, "Error loading config: %s", err.Error())
 	}
 
 	execute(c)
