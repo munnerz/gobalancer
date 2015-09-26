@@ -14,12 +14,6 @@ type File struct {
 }
 
 func (f *File) GetConfig() (*Config, error) {
-	c, err := f.Memory.GetConfig()
-
-	if err == nil {
-		return c, nil
-	}
-
 	data, err := ioutil.ReadFile(f.filename)
 
 	if err != nil {
@@ -72,7 +66,7 @@ func (f *File) AddTCPLoadbalancers(t ...tcp.LoadBalancer) error {
 		return err
 	}
 
-	cfg, err := f.GetConfig()
+	cfg, err := f.Memory.GetConfig()
 
 	if err != nil {
 		return err

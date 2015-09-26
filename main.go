@@ -18,11 +18,16 @@ func init() {
 	executed = make(map[string]bool)
 }
 
-func execute(c *config.Config) {
+func execute(storage config.Storage) {
 	done := make(chan error)
 
 	go func() {
 		for {
+			c, err := storage.GetConfig()
+			if err != nil {
+				done <- err
+				continue
+			}
 			for _, b := range c.Loadbalancers.TCP {
 				if executed[b.Name] {
 					continue
@@ -39,7 +44,7 @@ func execute(c *config.Config) {
 		err := <-done
 
 		if err != nil {
-			log.Errorf("LoadBalancer crashed: %s", err.Error())
+			log.Errorf("Executor error: %s", err.Error())
 			continue
 		}
 	}
@@ -52,11 +57,5 @@ func main() {
 
 	storage := config.NewFileStorage(*configFile)
 
-	c, err := storage.GetConfig()
-
-	if err != nil {
-		logging.Log("core", log.Fatalf, "Error loading config: %s", err.Error())
-	}
-
-	execute(c)
+	execute(storage)
 }
