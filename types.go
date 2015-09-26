@@ -1,6 +1,6 @@
 package main
 
 type LoadBalancer interface {
-	Run() error
+	Run(chan error) error
 	Stop() error
 }

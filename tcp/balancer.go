@@ -22,10 +22,11 @@ type LoadBalancer struct {
 	PollInterval time.Duration `json:"poll_interval"`
 }
 
-func (t *LoadBalancer) Run() error {
+func (t *LoadBalancer) Run(done chan error) error {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", t.Port))
 
 	if err != nil {
+		done <- err
 		return err
 	}
 

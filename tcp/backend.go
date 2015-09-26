@@ -12,7 +12,7 @@ type Backends []*Backend
 type Backend struct {
 	IP          net.IP        `json:"ip"`
 	Port        uint16        `json:"port"`
-	Timeout     time.Duration `json:"timeout_duration"`
+	Timeout     time.Duration `json:"poll_timeout"`
 	healthy     bool
 	connections map[*net.Conn]*net.Conn
 	pollLock    sync.RWMutex
