@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/munnerz/gobalancer/config"
@@ -10,7 +11,38 @@ import (
 
 var (
 	configFile = flag.String("config", "rules.json", "input configuration JSON")
+	executed   map[string]bool
 )
+
+func init() {
+	executed = make(map[string]bool)
+}
+
+func execute(c *config.Config) {
+	done := make(chan error)
+
+	go func() {
+		for {
+			for _, b := range c.Loadbalancers.TCP {
+				if executed[b.Name] {
+					continue
+				}
+				go b.Run(done)
+				executed[b.Name] = true
+			}
+			time.Sleep(time.Second * 5)
+		}
+	}()
+
+	for {
+		err := <-done
+
+		if err != nil {
+			log.Errorf("LoadBalancer crashed: %s", err.Error())
+			continue
+		}
+	}
+}
 
 func main() {
 	flag.Parse()
@@ -25,26 +57,5 @@ func main() {
 		logging.Log("core", log.Errorf, "Error loading config: %s", err.Error())
 	}
 
-	done := make(chan error)
-
-	for _, b := range c.Loadbalancers.TCP {
-		go b.Run(done)
-	}
-
-	running := len(c.Loadbalancers.TCP)
-
-	for {
-		if running == 0 {
-			break
-		}
-
-		err := <-done
-
-		running--
-
-		if err != nil {
-			log.Errorf("LoadBalancer crashed: %s", err.Error())
-			continue
-		}
-	}
+	execute(c)
 }
