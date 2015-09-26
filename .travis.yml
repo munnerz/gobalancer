@@ -15,10 +15,6 @@ matrix:
   allow_failures:
     - go: tip
 
-before_install:
-  - sudo apt-get update
-  - sudo apt-get upgrade
-
 script:
   ./.travis/build.sh
 
