@@ -1,50 +1,37 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"io/ioutil"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/munnerz/gobalancer/tcp"
+	"github.com/munnerz/gobalancer/config"
+	"github.com/munnerz/gobalancer/logging"
 )
 
 var (
 	configFile = flag.String("config", "rules.json", "input configuration JSON")
 )
 
-type configDefinition struct {
-	Loadbalancers struct {
-		TCP []tcp.LoadBalancer `json:"tcp"`
-	} `json:"loadbalancers"`
-}
-
 func main() {
 	flag.Parse()
 
 	log.SetLevel(log.DebugLevel)
 
-	configData, err := ioutil.ReadFile(*configFile)
+	storage := config.NewFileStorage(*configFile)
+
+	c, err := storage.GetConfig()
 
 	if err != nil {
-		log.Fatalf("Error opening config file '%s': %s", *configFile, err.Error())
-	}
-
-	config := configDefinition{}
-
-	err = json.Unmarshal(configData, &config)
-
-	if err != nil {
-		log.Fatalf("Error parsing config file '%s': %s", *configFile, err.Error())
+		logging.Log("core", log.Errorf, "Error loading config: %s", err.Error())
 	}
 
 	done := make(chan error)
 
-	for _, b := range config.Loadbalancers.TCP {
+	for _, b := range c.Loadbalancers.TCP {
 		go b.Run(done)
 	}
 
-	running := len(config.Loadbalancers.TCP)
+	running := len(c.Loadbalancers.TCP)
 
 	for {
 		if running == 0 {
