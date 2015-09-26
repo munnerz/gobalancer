@@ -5,7 +5,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/munnerz/loadbalancer/tcp"
+	"github.com/munnerz/gobalancer/tcp"
 )
 
 func main() {
