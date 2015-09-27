@@ -59,7 +59,7 @@ func (f *File) SaveConfig(c *Config) error {
 	return nil
 }
 
-func (f *File) AddTCPLoadbalancers(t ...tcp.LoadBalancer) error {
+func (f *File) AddTCPLoadbalancers(t ...*tcp.LoadBalancer) error {
 	err := f.Memory.AddTCPLoadbalancers(t...)
 
 	if err != nil {

@@ -22,7 +22,7 @@ func (m *Memory) SaveConfig(c *Config) error {
 	return nil
 }
 
-func (m *Memory) AddTCPLoadbalancers(t ...tcp.LoadBalancer) error {
+func (m *Memory) AddTCPLoadbalancers(t ...*tcp.LoadBalancer) error {
 	if m.Config == nil {
 		return fmt.Errorf("No config in memory")
 	}

@@ -34,7 +34,7 @@ func RegisterIP(ip, subnet net.IP, device string) error {
 		case 1: // Invalid permissions
 			return fmt.Errorf("Run loadbalancer as root to bind addresses!")
 		case 2: // IP already bound
-			return nil
+			return fmt.Errorf("IP already bound")
 		}
 
 		return fmt.Errorf("Error executing ip command. Exit code: %d", c)

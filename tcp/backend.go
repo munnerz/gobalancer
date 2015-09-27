@@ -1,74 +1,95 @@
 package tcp
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"time"
 )
 
+var (
+	ErrBackendsUnavailable = errors.New("No backends available")
+	ErrBackendFailed       = errors.New("Unexpected backend failure")
+	ErrBackendPanic        = errors.New("Panic in backend")
+)
+
 type Backends []*Backend
 
 type Backend struct {
-	Name        string        `json:"name"`
-	IP          net.IP        `json:"ip"`
-	Port        uint16        `json:"port"`
-	Timeout     time.Duration `json:"poll_timeout"`
-	healthy     bool
-	connections map[*net.Conn]*net.Conn
-	pollLock    sync.RWMutex
+	Name           string        `json:"name"`
+	IP             net.IP        `json:"ip"`
+	Port           uint16        `json:"port"`
+	Timeout        time.Duration `json:"poll_timeout"`
+	healthy        bool
+	connections    map[*net.Conn]*net.Conn
+	connectionLock sync.RWMutex
+	pollLock       sync.RWMutex
 }
 
-func proxy(done chan error, r func([]byte) (int, error), w func([]byte) (int, error)) {
-	for {
-		data := make([]byte, 256)
-		nr, err := r(data)
-
-		if err != nil {
-			w(data[0:nr])
-			done <- err
-			return
+func proxy(done chan error, src, dest net.Conn) {
+	defer func() {
+		if r := recover(); r != nil {
+			done <- ErrBackendPanic
 		}
+	}()
 
-		w(data[0:nr])
+	_, err := io.Copy(src, dest)
+	if err != nil {
+		done <- err
+		return
 	}
+	done <- nil
 }
 
-func (b *Backend) Proxy(conn net.Conn) error {
+func (b *Backend) Proxy(conn net.Conn) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = ErrBackendPanic
+		}
+	}()
+
 	bc, err := net.Dial("tcp", fmt.Sprintf("%s:%d", b.IP, b.Port))
 
 	if err != nil {
 		b.pollLock.Lock()
 		defer b.pollLock.Unlock()
 		b.healthy = false
-		return err
+		return ErrBackendFailed
 	}
 
 	defer bc.Close()
 
+	if conn == nil || bc == nil {
+		panic("Connections have gone away!")
+	}
+
 	b.addConnection(&conn, &bc)
+	defer b.deleteConnection(&conn)
 
-	done := make(chan error)
+	done1, done2 := make(chan error, 1), make(chan error, 1)
+	defer close(done1)
+	defer close(done2)
 
-	go proxy(done, bc.Read, conn.Write)
-	go proxy(done, conn.Read, bc.Write)
+	go proxy(done1, conn, bc)
+	go proxy(done2, bc, conn)
 
-	<-done
+	select {
+	case e := <-done1:
+		err = e
+	case e := <-done2:
+		err = e
+	}
 
-	b.deleteConnection(&conn)
-
-	return nil
+	return
 }
 
 func (l *Backends) GetHealthyBackend() (*Backend, error) {
 	b := l.leastconn()
 
 	if b == nil {
-		l.quickPoll()
-		b = l.leastconn()
-		if b == nil {
-			return nil, fmt.Errorf("No backend available")
-		}
+		return nil, ErrBackendsUnavailable
 	}
 
 	return b, nil
@@ -98,14 +119,6 @@ func (l *Backends) leastconn() *Backend {
 	return b
 }
 
-func (l *Backends) quickPoll() {
-	for _, b := range *l {
-		if b.poll() {
-			return
-		}
-	}
-}
-
 func (b *Backend) poll() bool {
 	b.pollLock.Lock()
 	defer b.pollLock.Unlock()
@@ -124,6 +137,8 @@ func (b *Backend) poll() bool {
 }
 
 func (b *Backend) addConnection(source, target *net.Conn) {
+	b.connectionLock.Lock()
+	defer b.connectionLock.Unlock()
 	if b.connections == nil {
 		b.connections = make(map[*net.Conn]*net.Conn)
 	}
@@ -131,5 +146,7 @@ func (b *Backend) addConnection(source, target *net.Conn) {
 }
 
 func (b *Backend) deleteConnection(source *net.Conn) {
+	b.connectionLock.Lock()
+	defer b.connectionLock.Unlock()
 	delete(b.connections, source)
 }

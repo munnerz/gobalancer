@@ -15,11 +15,11 @@ import (
 
 var (
 	configFile = flag.String("config", "rules.json", "input configuration JSON")
-	executed   map[string]tcp.LoadBalancer
+	executed   map[string]*tcp.LoadBalancer
 )
 
 func init() {
-	executed = make(map[string]tcp.LoadBalancer)
+	executed = make(map[string]*tcp.LoadBalancer)
 }
 
 func execute(storage config.Storage) {
@@ -48,7 +48,7 @@ func execute(storage config.Storage) {
 		err := <-done
 
 		if err != nil {
-			log.Errorf("Executor error: %s", err.Error())
+			logging.Log("core", log.Errorf, "Executor error: %s", err.Error())
 			continue
 		}
 	}
@@ -57,7 +57,7 @@ func execute(storage config.Storage) {
 func main() {
 	flag.Parse()
 
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	storage := config.NewFileStorage(*configFile)
 

@@ -7,7 +7,7 @@ import (
 type Storage interface {
 	GetConfig() (*Config, error)
 	SaveConfig(*Config) error
-	AddTCPLoadbalancers(...tcp.LoadBalancer) error
+	AddTCPLoadbalancers(...*tcp.LoadBalancer) error
 }
 
 type Config struct {
@@ -15,5 +15,5 @@ type Config struct {
 }
 
 type Loadbalancers struct {
-	TCP []tcp.LoadBalancer `json:"tcp"`
+	TCP []*tcp.LoadBalancer `json:"tcp"`
 }

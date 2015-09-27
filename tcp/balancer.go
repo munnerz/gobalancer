@@ -2,7 +2,6 @@ package tcp
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"time"
 
@@ -24,6 +23,7 @@ type LoadBalancer struct {
 	Device       string        `json:"device"`
 	Backends     Backends      `json:"backends"`
 	PollInterval time.Duration `json:"poll_interval"`
+	mtu          int
 }
 
 func (t *LoadBalancer) Run(done chan error) error {
@@ -34,12 +34,14 @@ func (t *LoadBalancer) Run(done chan error) error {
 		return err
 	}
 
-	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", t.Port))
+	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", t.IP, t.Port))
 
 	if err != nil {
 		done <- err
 		return err
 	}
+
+	defer ln.Close()
 
 	go func() {
 		for {
@@ -50,16 +52,25 @@ func (t *LoadBalancer) Run(done chan error) error {
 		}
 	}()
 
+	logging.Log(t.Name, log.Debugf, "Entering connection loop...")
+
 	for {
 		conn, err := ln.Accept()
 
 		if err != nil {
-			log.Errorf("Error accepting connection: %s", err.Error())
-			continue
+			logging.Log(t.Name, log.Errorf, "Error accepting connection: %s", err.Error())
+			done <- err
+			break
 		}
+
+		logging.Log(t.Name, log.Debugf, "Accepted connection from %s", conn.RemoteAddr())
 
 		go t.handleConnection(conn, 0)
 	}
+
+	logging.Log(t.Name, log.Debugf, "Closing loadbalancer listener...")
+
+	return nil
 }
 
 func (t *LoadBalancer) Stop() error {
@@ -75,6 +86,8 @@ func (t *LoadBalancer) Stop() error {
 func (t *LoadBalancer) handleConnection(conn net.Conn, retries int) {
 	defer conn.Close()
 
+	logging.Log(t.Name, log.Debugf, "Handling connection '%s'", conn.RemoteAddr())
+
 	b, err := t.Backends.GetHealthyBackend()
 
 	if err != nil {
@@ -85,15 +98,15 @@ func (t *LoadBalancer) handleConnection(conn net.Conn, retries int) {
 	err = b.Proxy(conn)
 
 	if err != nil {
-		if err == io.EOF {
+		if err == ErrBackendFailed || err == ErrBackendPanic {
+			logging.Log(t.Name, log.Errorf, "Error connecting to backend '%s:%d': %s", b.IP, b.Port, err.Error())
+			if retries < maxRetries {
+				logging.Log(t.Name, log.Errorf, "%s retrying connection (%d)...", conn.RemoteAddr(), retries)
+				t.handleConnection(conn, retries+1)
+			}
 			return
 		}
-		logging.Log(t.Name, log.Errorf, "Error connecting to backend '%s:%d': %s", b.IP, b.Port, err.Error())
-		if retries < maxRetries {
-			logging.Log(t.Name, log.Errorf, "%s retrying connection (%d)...", conn.RemoteAddr(), retries)
-			t.handleConnection(conn, retries+1)
-		}
-		return
+
 	}
 
 }
