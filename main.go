@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -14,8 +15,9 @@ import (
 )
 
 var (
-	configFile = flag.String("config", "rules.json", "input configuration JSON")
-	executed   map[string]*tcp.LoadBalancer
+	configFile   = flag.String("config", "rules.json", "input configuration JSON")
+	executed     map[string]*tcp.LoadBalancer
+	executedLock sync.RWMutex
 )
 
 func init() {
@@ -23,21 +25,20 @@ func init() {
 }
 
 func execute(storage config.Storage) {
-	done := make(chan error)
+	in := make(chan *tcp.LoadBalancer)
 
 	go func() {
 		for {
 			c, err := storage.GetConfig()
 			if err != nil {
-				done <- err
 				continue
 			}
 			for _, b := range c.Loadbalancers.TCP {
 				if _, ok := executed[b.Name]; ok {
 					continue
 				}
-				logging.Log("core", log.Infof, "Starting LoadBalancer '%s' (%s:%d)", b.Name, b.IP, b.Port)
-				go b.Run(done)
+				logging.Log("core", log.Infof, "Starting LoadBalancer '%s' (%s:%v)", b.Name, b.IP, b.Ports)
+				go b.Run(in)
 				executed[b.Name] = b
 			}
 			time.Sleep(time.Second * 5)
@@ -45,13 +46,16 @@ func execute(storage config.Storage) {
 	}()
 
 	for {
-		err := <-done
+		lb := <-in
 
-		if err != nil {
-			logging.Log("core", log.Errorf, "Executor error: %s", err.Error())
-			continue
-		}
+		DeleteLB(lb)
 	}
+}
+
+func DeleteLB(l *tcp.LoadBalancer) {
+	executedLock.Lock()
+	defer executedLock.Unlock()
+	delete(executed, l.Name)
 }
 
 func main() {
@@ -70,11 +74,12 @@ func main() {
 
 	logging.Log("core", log.Infof, "Closing load balancers...")
 
-	for _, lb := range executed {
-		err := lb.Stop()
+	executedLock.Lock()
+	defer executedLock.Unlock()
 
-		if err != nil {
-			logging.Log("core", log.Errorf, "Error closing load balancer '%s': %s", lb.Name, err.Error())
-		}
+	for _, lb := range executed {
+		logging.Log("core", log.Debugf, "Closing load balancer: %s", lb.Name)
+		lb.Stop()
 	}
+
 }

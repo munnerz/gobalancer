@@ -20,7 +20,6 @@ type Backends []*Backend
 type Backend struct {
 	Name           string        `json:"name"`
 	IP             net.IP        `json:"ip"`
-	Port           uint16        `json:"port"`
 	Timeout        time.Duration `json:"poll_timeout"`
 	healthy        bool
 	connections    map[*net.Conn]*net.Conn
@@ -43,14 +42,14 @@ func proxy(done chan error, src, dest net.Conn) {
 	done <- nil
 }
 
-func (b *Backend) Proxy(conn net.Conn) (err error) {
+func (b *Backend) Proxy(conn net.Conn, port int) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = ErrBackendPanic
 		}
 	}()
 
-	bc, err := net.Dial("tcp", fmt.Sprintf("%s:%d", b.IP, b.Port))
+	bc, err := net.Dial("tcp", fmt.Sprintf("%s:%d", b.IP, port))
 
 	if err != nil {
 		b.pollLock.Lock()
@@ -117,11 +116,11 @@ func (l *Backends) leastconn() *Backend {
 	return b
 }
 
-func (b *Backend) poll() bool {
+func (b *Backend) poll(port int) bool {
 	b.pollLock.Lock()
 	defer b.pollLock.Unlock()
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", b.IP, b.Port), b.Timeout)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", b.IP, port), b.Timeout)
 
 	if err != nil {
 		b.healthy = false

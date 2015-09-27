@@ -71,9 +71,14 @@ func runLoadBalancer(d chan error) {
 	}
 
 	lb := LoadBalancer{
-		Name:         "Test",
-		IP:           net.IPv4(127, 0, 0, 1),
-		Port:         32144,
+		Name: "Test",
+		IP:   net.IPv4(127, 0, 0, 1),
+		Ports: []PortMap{
+			PortMap{
+				Src: 32144,
+				Dst: 32145,
+			},
+		},
 		Subnet:       net.IPv4(255, 255, 255, 255),
 		Device:       dev,
 		PollInterval: time.Second,
@@ -81,13 +86,14 @@ func runLoadBalancer(d chan error) {
 			&Backend{
 				Name:    "TestBackend",
 				IP:      net.IPv4(127, 0, 0, 1),
-				Port:    32145,
 				Timeout: time.Second,
 			},
 		},
 	}
 
-	lb.Run(d)
+	l := make(chan *LoadBalancer)
+	lb.Run(l)
+	d <- nil
 }
 
 func TestBackend(t *testing.T) {

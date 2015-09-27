@@ -4,24 +4,19 @@
       {
         "name": "TestTCPLoadbalancer",
         "ip": "10.30.50.124",
-        "port": 2000,
+        "ports": [
+          "2000:10000"
+        ],
         "device": "en0",
         "subnet": "255.255.254.0",
         "poll_interval": 500000000,
         "backends": [
           {
             "ip": "127.0.0.1",
-            "port": 10000,
             "poll_timeout": 1000000000
           },
           {
-            "ip": "127.0.0.1",
-            "port": 10001,
-            "poll_timeout": 1000000000
-          },
-          {
-            "ip": "127.0.0.1",
-            "port": 10002,
+            "ip": "127.0.0.2",
             "poll_timeout": 1000000000
           }
         ]
