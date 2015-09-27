@@ -3,9 +3,11 @@
     "tcp": [
       {
         "name": "TestTCPLoadbalancer",
-        "ip": "127.0.0.1",
+        "ip": "10.30.50.124",
         "port": 2000,
-        "poll_interval": 200000000,
+        "device": "en0",
+        "subnet": "255.255.254.0",
+        "poll_interval": 500000000,
         "backends": [
           {
             "ip": "127.0.0.1",

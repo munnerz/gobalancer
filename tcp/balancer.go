@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
+	"github.com/munnerz/gobalancer/addressing"
 	"github.com/munnerz/gobalancer/logging"
 )
 
@@ -18,12 +19,21 @@ const (
 type LoadBalancer struct {
 	Name         string        `json:"name"`
 	IP           net.IP        `json:"ip"`
+	Subnet       net.IP        `json:"subnet"`
 	Port         uint16        `json:"port"`
+	Device       string        `json:"device"`
 	Backends     Backends      `json:"backends"`
 	PollInterval time.Duration `json:"poll_interval"`
 }
 
 func (t *LoadBalancer) Run(done chan error) error {
+	err := addressing.RegisterIP(t.IP, t.Subnet, t.Device)
+
+	if err != nil {
+		done <- err
+		return err
+	}
+
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", t.Port))
 
 	if err != nil {
@@ -53,6 +63,12 @@ func (t *LoadBalancer) Run(done chan error) error {
 }
 
 func (t *LoadBalancer) Stop() error {
+	err := addressing.UnregisterIP(t.IP, t.Subnet, t.Device)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -2,20 +2,24 @@ package main
 
 import (
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/munnerz/gobalancer/config"
 	"github.com/munnerz/gobalancer/logging"
+	"github.com/munnerz/gobalancer/tcp"
 )
 
 var (
 	configFile = flag.String("config", "rules.json", "input configuration JSON")
-	executed   map[string]bool
+	executed   map[string]tcp.LoadBalancer
 )
 
 func init() {
-	executed = make(map[string]bool)
+	executed = make(map[string]tcp.LoadBalancer)
 }
 
 func execute(storage config.Storage) {
@@ -29,12 +33,12 @@ func execute(storage config.Storage) {
 				continue
 			}
 			for _, b := range c.Loadbalancers.TCP {
-				if executed[b.Name] {
+				if _, ok := executed[b.Name]; ok {
 					continue
 				}
 				logging.Log("core", log.Infof, "Starting LoadBalancer '%s' (%s:%d)", b.Name, b.IP, b.Port)
 				go b.Run(done)
-				executed[b.Name] = true
+				executed[b.Name] = b
 			}
 			time.Sleep(time.Second * 5)
 		}
@@ -57,5 +61,20 @@ func main() {
 
 	storage := config.NewFileStorage(*configFile)
 
-	execute(storage)
+	go execute(storage)
+
+	signalChan := make(chan os.Signal)
+	signal.Notify(signalChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+
+	<-signalChan
+
+	logging.Log("core", log.Infof, "Closing load balancers...")
+
+	for _, lb := range executed {
+		err := lb.Stop()
+
+		if err != nil {
+			logging.Log("core", log.Errorf, "Error closing load balancer '%s': %s", lb.Name, err.Error())
+		}
+	}
 }
