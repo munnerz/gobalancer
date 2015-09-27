@@ -69,8 +69,6 @@ func (b *Backend) Proxy(conn net.Conn) (err error) {
 	defer b.deleteConnection(&conn)
 
 	done1, done2 := make(chan error, 1), make(chan error, 1)
-	defer close(done1)
-	defer close(done2)
 
 	go proxy(done1, conn, bc)
 	go proxy(done2, bc, conn)
