@@ -29,7 +29,7 @@ type LoadBalancer struct {
 func (t *LoadBalancer) Run(done chan error) error {
 	err := addressing.RegisterIP(t.IP, t.Subnet, t.Device)
 
-	if err != nil {
+	if err != nil && err != addressing.ErrAddressBound {
 		done <- err
 		return err
 	}
@@ -70,6 +70,7 @@ func (t *LoadBalancer) Run(done chan error) error {
 
 	logging.Log(t.Name, log.Debugf, "Closing loadbalancer listener...")
 
+	done <- nil
 	return nil
 }
 
