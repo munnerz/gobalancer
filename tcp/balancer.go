@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -65,7 +66,12 @@ func (t *LoadBalancer) handleConnection(conn net.Conn, retries int) {
 		return
 	}
 
-	if s, err := b.Proxy(conn); !s {
+	err = b.Proxy(conn)
+
+	if err != nil {
+		if err == io.EOF {
+			return
+		}
 		logging.Log(t.Name, log.Errorf, "Error connecting to backend '%s:%d': %s", b.IP, b.Port, err.Error())
 		if retries < maxRetries {
 			logging.Log(t.Name, log.Errorf, "%s retrying connection (%d)...", conn.RemoteAddr(), retries)
@@ -73,4 +79,5 @@ func (t *LoadBalancer) handleConnection(conn net.Conn, retries int) {
 		}
 		return
 	}
+
 }

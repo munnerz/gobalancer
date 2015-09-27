@@ -10,6 +10,7 @@ import (
 type Backends []*Backend
 
 type Backend struct {
+	Name        string        `json:"name"`
 	IP          net.IP        `json:"ip"`
 	Port        uint16        `json:"port"`
 	Timeout     time.Duration `json:"poll_timeout"`
@@ -33,12 +34,14 @@ func proxy(done chan error, r func([]byte) (int, error), w func([]byte) (int, er
 	}
 }
 
-func (b *Backend) Proxy(conn net.Conn) (bool, error) {
+func (b *Backend) Proxy(conn net.Conn) error {
 	bc, err := net.Dial("tcp", fmt.Sprintf("%s:%d", b.IP, b.Port))
 
 	if err != nil {
-		go b.poll()
-		return false, err
+		b.pollLock.Lock()
+		defer b.pollLock.Unlock()
+		b.healthy = false
+		return err
 	}
 
 	defer bc.Close()
@@ -50,18 +53,28 @@ func (b *Backend) Proxy(conn net.Conn) (bool, error) {
 	go proxy(done, bc.Read, conn.Write)
 	go proxy(done, conn.Read, bc.Write)
 
-	err = <-done
+	<-done
 
 	b.deleteConnection(&conn)
 
-	if err != nil {
-		return true, err
-	}
-
-	return true, nil
+	return nil
 }
 
 func (l *Backends) GetHealthyBackend() (*Backend, error) {
+	b := l.leastconn()
+
+	if b == nil {
+		l.quickPoll()
+		b = l.leastconn()
+		if b == nil {
+			return nil, fmt.Errorf("No backend available")
+		}
+	}
+
+	return b, nil
+}
+
+func (l *Backends) leastconn() *Backend {
 	// Implements a least connection based load balancing algorithm
 	var b *Backend
 
@@ -82,14 +95,18 @@ func (l *Backends) GetHealthyBackend() (*Backend, error) {
 		}
 	}
 
-	if b == nil {
-		return nil, fmt.Errorf("No backend available")
-	}
-
-	return b, nil
+	return b
 }
 
-func (b *Backend) poll() {
+func (l *Backends) quickPoll() {
+	for _, b := range *l {
+		if b.poll() {
+			return
+		}
+	}
+}
+
+func (b *Backend) poll() bool {
 	b.pollLock.Lock()
 	defer b.pollLock.Unlock()
 
@@ -97,12 +114,13 @@ func (b *Backend) poll() {
 
 	if err != nil {
 		b.healthy = false
-		return
+		return false
 	}
 
 	defer conn.Close()
 
 	b.healthy = true
+	return true
 }
 
 func (b *Backend) addConnection(source, target *net.Conn) {
