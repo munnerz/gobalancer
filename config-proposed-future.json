@@ -1,0 +1,47 @@
+{
+  "addressing": {
+    "regions": [
+      {
+        "name": "default",
+        "net_dev": "en0",
+        "ip_range": "10.30.51.200/31"
+      }
+    ]
+  },
+  "services": [
+    {
+      "name": "test1",
+      "ports": [
+        {
+          "type": "tcp",
+          "src": 8080,
+          "dst": 80
+        },
+        {
+          "type": "tcp",
+          "src": 2222,
+          "dst": 22
+        },
+        {
+          "type": "udp",
+          "src": 5353,
+          "dst": 53
+        }
+      ],
+      "backends": [
+        {
+          "name": "testbackend1",
+          "ip": "127.0.0.1",
+          "poll_interval": 1000,
+          "poll_timeout": 1000
+        },
+        {
+          "name": "testbackend2",
+          "ip": "127.0.0.2",
+          "poll_interval": 1000,
+          "poll_timeout": 1000
+        }
+      ]
+    }
+  ]
+}
