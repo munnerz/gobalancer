@@ -18,7 +18,7 @@ type GoBalancer struct {
 	configStorage config.Storage
 
 	config    *api.Config
-	allocator *addressing.Allocator
+	allocator *addressing.IPPool
 	services  map[string]*api.Service
 }
 
@@ -78,7 +78,7 @@ func NewGoBalancer(c config.Storage) (*GoBalancer, error) {
 		return nil, err
 	}
 
-	alloc := addressing.NewAllocator(conf.Allocator)
+	alloc := addressing.NewIPPool(conf.IPPool)
 
 	return &GoBalancer{
 		configStorage: c,

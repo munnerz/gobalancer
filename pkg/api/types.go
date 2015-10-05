@@ -6,9 +6,8 @@ import (
 )
 
 type Config struct {
+	IPPool   *IPPool    `json:"ip_pool"`
 	Services []*Service `json:"services"`
-
-	Allocator *Allocator `json:"addressing"`
 }
 
 // Object is a generic for any named item
@@ -16,7 +15,9 @@ type Object struct {
 	Name string `json:"name"`
 }
 
-type Allocator struct {
+type IPPool struct {
+	Object
+
 	Device  string    `json:"service_net_dev"`
 	Network net.IPNet `json:"service_ip_range"`
 }

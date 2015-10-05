@@ -16,7 +16,7 @@ var (
 
 // Allocator keeps track of and monitors the IPs allocated to services
 // and is able to allocate new addresses from a pool to services
-type Allocator struct {
+type IPPool struct {
 	device           string
 	network          net.IPNet
 	allocatedIPs     []net.IP
@@ -25,7 +25,7 @@ type Allocator struct {
 
 // AllocateIP will allocate an IP address from this allocators network pool,
 // or return an error if the pool is full
-func (a *Allocator) AllocateIP() (*net.IPNet, error) {
+func (a *IPPool) AllocateIP() (*net.IPNet, error) {
 
 	// define a function the increments an IP address
 	inc := func(ip net.IP) {
@@ -57,21 +57,21 @@ OuterLoop:
 
 // NewAllocator initialises a new IP address allocator with the given
 // device name and network
-func NewAllocator(a *api.Allocator) *Allocator {
-	return &Allocator{
+func NewIPPool(a *api.IPPool) *IPPool {
+	return &IPPool{
 		device:  a.Device,
 		network: a.Network,
 	}
 }
 
-func (a *Allocator) allocateIP(e net.IP) {
+func (a *IPPool) allocateIP(e net.IP) {
 	a.allocatedIPsLock.Lock()
 	defer a.allocatedIPsLock.Unlock()
 
 	a.allocatedIPs = append(a.allocatedIPs, e)
 }
 
-func (a *Allocator) deallocateIP(e net.IP) {
+func (a *IPPool) deallocateIP(e net.IP) {
 	a.allocatedIPsLock.Lock()
 	defer a.allocatedIPsLock.Unlock()
 

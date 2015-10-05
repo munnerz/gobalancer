@@ -22,7 +22,7 @@ func exitCode(e error) (int, error) {
 
 // RegisterIP will bind an IP address to this allocators network device.
 // Currently this only supports OS X (darwin) and Linux
-func (a *Allocator) RegisterIP(ipnet net.IPNet) error {
+func (a *IPPool) RegisterIP(ipnet net.IPNet) error {
 	if ipnet.IP.Equal(net.IPv4(127, 0, 0, 1)) {
 		return ErrAddressBound
 	}
@@ -58,7 +58,7 @@ func (a *Allocator) RegisterIP(ipnet net.IPNet) error {
 
 // UnregisterIP will release an IP address from this allocators network device.
 // Currently this only supports OS X (darwin) and Linux
-func (a *Allocator) UnregisterIP(ipnet net.IPNet) error {
+func (a *IPPool) UnregisterIP(ipnet net.IPNet) error {
 	if ipnet.IP.Equal(net.IPv4(127, 0, 0, 1)) {
 		return nil
 	}
