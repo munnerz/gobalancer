@@ -1,31 +1,40 @@
-package tcp
+package loadbalancers
 
 import (
-	"fmt"
+	"net"
+
+	"github.com/munnerz/gobalancer/pkg/api"
 )
 
-var (
-	ErrBackendsUnavailable = fmt.Errorf("No backends available")
-)
+type Backend struct {
+	*api.Backend
 
-func (l *LoadBalancer) getHealthyBackend() (*backend, error) {
+	healthy     bool
+	connections []*net.Conn
+}
+
+func healthCheck(l LoadBalancer, b *Backend) {
+	b.healthy = l.Poll(b)
+}
+
+func GetHealthyBackend(l LoadBalancer) (*Backend, error) {
 	// Implements a least connection based load balancing algorithm
-	var b *backend
+	var b *Backend
 
-	for _, be := range l.backends {
+	for _, be := range l.Backends() {
 		// Skip unhealthy backends
 		if !be.healthy {
 			continue
 		}
 
 		if b == nil {
-			b = &be
+			b = be
 			continue
 		}
 
 		// Choose the backend with the least connections
 		if len(be.connections) < len(b.connections) {
-			b = &be
+			b = be
 		}
 	}
 
@@ -34,10 +43,4 @@ func (l *LoadBalancer) getHealthyBackend() (*backend, error) {
 	}
 
 	return b, nil
-}
-
-func (l *LoadBalancer) accept(conn *connection) {
-
-	// Get a healthy backend
-	// Call backend.Proxy(conn)
 }
