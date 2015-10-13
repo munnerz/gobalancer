@@ -49,6 +49,8 @@ const (
 
 // PortMap represents a mapping between two ports
 type ServicePort struct {
+	Object
+
 	Type ServicePortType `json:"type"`
 	Src  int             `json:"src"`
 	Dst  int             `json:"dst"`
