@@ -36,7 +36,6 @@ func (g *GoBalancer) CreateService(s *api.Service) error {
 	}
 
 	if s.IP == nil {
-		// FIX
 		ip, err := g.pool.AllocateIP()
 
 		if err != nil {
@@ -46,6 +45,12 @@ func (g *GoBalancer) CreateService(s *api.Service) error {
 		s.IP = ip
 
 		g.configStorage.SaveConfig(g.config)
+	}
+
+	err := g.pool.RegisterIP(*s.IP)
+
+	if err != nil {
+		return err
 	}
 
 	g.services[s.Name] = service{

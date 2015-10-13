@@ -5,20 +5,14 @@ import (
 	"net"
 	"os/exec"
 	"runtime"
-	"strconv"
-	"strings"
 )
 
 var (
 	// ErrAddressBound is returned when the IP address passed to RegisterIP is already
 	// bound to a network interface on the system
-	ErrAddressBound = fmt.Errorf("IP address already bound")
+	ErrAddressBound  = fmt.Errorf("IP address already bound")
+	ErrUnsupportedOS = fmt.Errorf("Unsupported operating system for binding IP addresses")
 )
-
-func exitCode(e error) (int, error) {
-	p := strings.Split(e.Error(), " ")
-	return strconv.Atoi(p[len(p)-1])
-}
 
 // RegisterIP will bind an IP address to this allocators network device.
 // Currently this only supports OS X (darwin) and Linux
@@ -29,29 +23,23 @@ func (a *IPPool) RegisterIP(ipnet net.IPNet) error {
 
 	a.allocateIP(ipnet.IP)
 
-	cmd := exec.Command("ip", "addr", "add", ipnet.String(), "dev", a.device)
+	var cmd *exec.Cmd
 
-	if runtime.GOOS == "darwin" {
-		cmd = exec.Command("ifconfig", a.device, "inet", ipnet.IP.String(), "netmask", ipnet.Mask.String(), "alias")
+	switch runtime.GOOS {
+	case "linux":
+		exec.Command("ip", "addr", "add", ipnet.String(), "dev", a.device)
+	case "darwin":
+		cmd = exec.Command("ifconfig", a.device, "inet", ipnet.IP.String(), "netmask", net.IP(ipnet.Mask).String(), "alias")
+	case "windows":
+		cmd = exec.Command("netsh", "interface", "ipv4", "add", a.device, ipnet.IP.String(), net.IP(ipnet.Mask).String())
+	default:
+		return ErrUnsupportedOS
 	}
 
 	err := cmd.Run()
 
 	if err != nil {
-		c, err := exitCode(err)
-
-		if err != nil {
-			return err
-		}
-
-		switch c {
-		case 1: // Invalid permissions
-			return fmt.Errorf("Run loadbalancer as root to bind addresses!")
-		case 2: // IP already bound
-			return ErrAddressBound
-		}
-
-		return fmt.Errorf("Error executing ip command. Exit code: %d", c)
+		return fmt.Errorf("Error executing ip command: %s", err.Error())
 	}
 	return nil
 }
@@ -65,22 +53,23 @@ func (a *IPPool) UnregisterIP(ipnet net.IPNet) error {
 
 	a.deallocateIP(ipnet.IP)
 
-	cmd := exec.Command("ip", "addr", "del", ipnet.String(), "dev", a.device)
+	var cmd *exec.Cmd
 
-	if runtime.GOOS == "darwin" {
-		cmd = exec.Command("ifconfig", a.device, "inet", ipnet.IP.String(), "netmask", ipnet.Mask.String(), "delete")
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("ip", "addr", "del", ipnet.String(), "dev", a.device)
+	case "darwin":
+		cmd = exec.Command("ifconfig", a.device, "inet", ipnet.IP.String(), "netmask", net.IP(ipnet.Mask).String(), "delete")
+	case "windows":
+		cmd = exec.Command("netsh", "interface", "ipv4", "delete", a.device, ipnet.IP.String(), net.IP(ipnet.Mask).String())
+	default:
+		return ErrUnsupportedOS
 	}
 
 	err := cmd.Run()
 
 	if err != nil {
-		c, err := exitCode(err)
-
-		if err != nil {
-			return err
-		}
-
-		return fmt.Errorf("Error executing ip command. Exit code: %d", c)
+		return fmt.Errorf("Error executing ip command: %s", err.Error())
 	}
 	return nil
 }
