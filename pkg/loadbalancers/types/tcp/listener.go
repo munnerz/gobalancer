@@ -7,11 +7,11 @@ import (
 	"net"
 )
 
-func (l *LoadBalancer) listen(c chan net.Conn, control chan bool, errChan chan error) {
-	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", l.ip, l.port.Src))
+func (t *TCP) Listen() {
+	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", t.ip, t.port))
 
 	if err != nil {
-		errChan <- err
+		t.errorChan <- err
 		return
 	}
 
@@ -26,9 +26,9 @@ func (l *LoadBalancer) listen(c chan net.Conn, control chan bool, errChan chan e
 				break
 			}
 
-			c <- conn
+			t.connectionChan <- conn
 		}
 	}()
 
-	<-control
+	<-t.connectionChan
 }

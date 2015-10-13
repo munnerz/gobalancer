@@ -1,78 +1,45 @@
 package tcp
 
 import (
-	"fmt"
 	"net"
 
-	"github.com/munnerz/gobalancer/pkg/api"
 	"github.com/munnerz/gobalancer/pkg/loadbalancers"
 )
 
-const (
-	name = "tcp"
-)
+type TCP struct {
+	ip   net.IP
+	port int
 
-// LoadBalancer contains the runtime state of a TCP loadbalancer
-type LoadBalancer struct {
-	ip          net.IP
-	port        api.ServicePort
-	backends    []backend
-	controlChan chan bool
+	backends []*loadbalancers.Backend
+
+	connectionChan chan net.Conn
+	controlChan    chan bool
+	errorChan      chan error
 }
 
-// Run will launch the TCP loadbalancer and begin accepting and proxying connections
-func (l *LoadBalancer) Run() error {
-
-	connChan := make(chan net.Conn)
-	listenerControlChan := make(chan bool)
-	listenerErrChan := make(chan error)
-
-	go l.listen(connChan, listenerControlChan, listenerErrChan)
-
-Loop:
-	for {
-		select {
-		case conn := <-connChan:
-			go l.accept(&conn)
-		case <-l.controlChan:
-			break Loop
-		case <-listenerErrChan:
-			break Loop
-		}
+func NewTCP(ip net.IP, port int, backends []*loadbalancers.Backend) loadbalancers.LoadBalancer {
+	return &TCP{
+		ip:             ip,
+		port:           port,
+		backends:       backends,
+		connectionChan: make(chan net.Conn),
+		controlChan:    make(chan bool),
+		errorChan:      make(chan error),
 	}
-
-	listenerControlChan <- true
-
-	return nil
 }
 
-// Stop sends a signal to the Run function to stop accepting connections
-func (l *LoadBalancer) Stop() {
-	l.controlChan <- true
+func (t *TCP) ErrorChan() {
+	return t.errorChan
 }
 
-func NewLoadBalancer(spec interface{}) (loadbalancers.LoadBalancer, error) {
-	if s, ok := spec.(api.LoadBalancer); ok {
-		backends := make([]*backend, len(s.Backends))
+func (t *TCP) ControlChan() {
+	return t.controlChan
+}
 
-		for i, b := range s.Backends {
-			be, err := NewBackend(b)
-
-			if err != nil {
-				return nil, err
-			}
-
-			backends[i] = be.(*backend)
-		}
-
-		return &LoadBalancer{
-			spec:        s,
-			controlChan: make(chan bool),
-		}, nil
-	}
-	return nil, fmt.Errorf("Invalid TCPLoadBalancer spec type")
+func (t *TCP) ConnectionChan() {
+	return t.connectionChan
 }
 
 func init() {
-	loadbalancers.AddType(name, NewLoadBalancer)
+	loadbalancers.AddType("tcp", NewTCP)
 }
