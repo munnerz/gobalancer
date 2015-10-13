@@ -28,15 +28,19 @@ func NewTCP(ip net.IP, port int, backends []*loadbalancers.Backend) loadbalancer
 	}
 }
 
-func (t *TCP) ErrorChan() {
+func (t *TCP) Backends() []*loadbalancers.Backend {
+	return t.backends
+}
+
+func (t *TCP) ErrorChan() chan error {
 	return t.errorChan
 }
 
-func (t *TCP) ControlChan() {
+func (t *TCP) ControlChan() chan bool {
 	return t.controlChan
 }
 
-func (t *TCP) ConnectionChan() {
+func (t *TCP) ConnectionChan() chan net.Conn {
 	return t.connectionChan
 }
 

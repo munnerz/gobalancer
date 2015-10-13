@@ -20,10 +20,6 @@ func (t *TCP) Poll(b *loadbalancers.Backend) bool {
 	return true
 }
 
-func (t *TCP) GetBackends() []*loadbalancers.Backend {
-	return t.backends
-}
-
 func (t *TCP) NewConnection(b *loadbalancers.Backend) (net.Conn, error) {
 	return net.DialTimeout("tcp", fmt.Sprintf("%s:%d", b.IP, t.port), b.PollTimeout)
 }
