@@ -7,6 +7,8 @@ import (
 	"github.com/munnerz/gobalancer/pkg/addressing"
 	"github.com/munnerz/gobalancer/pkg/api"
 	"github.com/munnerz/gobalancer/pkg/config"
+	"github.com/munnerz/gobalancer/pkg/loadbalancers"
+	_ "github.com/munnerz/gobalancer/pkg/loadbalancers/types"
 )
 
 var (
@@ -17,9 +19,15 @@ var (
 type GoBalancer struct {
 	configStorage config.Storage
 
-	config    *api.Config
-	allocator *addressing.IPPool
-	services  map[string]*api.Service
+	config   *api.Config
+	pool     *addressing.IPPool
+	services map[string]service
+}
+
+type service struct {
+	*api.Service
+
+	loadbalancers map[string]loadbalancers.LoadBalancer
 }
 
 func (g *GoBalancer) CreateService(s *api.Service) error {
@@ -28,7 +36,8 @@ func (g *GoBalancer) CreateService(s *api.Service) error {
 	}
 
 	if s.IP == nil {
-		ip, err := g.allocator.AllocateIP()
+		// FIX
+		ip, err := g.pool.AllocateIP()
 
 		if err != nil {
 			return err
@@ -39,7 +48,10 @@ func (g *GoBalancer) CreateService(s *api.Service) error {
 		g.configStorage.SaveConfig(g.config)
 	}
 
-	g.services[s.Name] = s
+	g.services[s.Name] = service{
+		Service:       s,
+		loadbalancers: make(map[string]loadbalancers.LoadBalancer),
+	}
 
 	return nil
 }
@@ -64,11 +76,28 @@ func (g *GoBalancer) Run() error {
 
 	log.Printf("Loaded %d services. Launching loadbalancers...", len(g.services))
 
-	for _, svc := range g.services {
+	errorChan := make(chan error)
 
+ServiceLoop:
+	for _, s := range g.services {
+		for _, p := range s.Ports {
+			lb, err := loadbalancers.NewLoadBalancer(s.IP.IP, p.Src, p.Type, s.Backends)
+
+			if err != nil {
+				log.Printf("Error creating loadbalancer: %s", err.Error())
+				continue ServiceLoop
+			}
+
+			s.loadbalancers[p.Name] = lb
+		}
+
+		for _, l := range s.loadbalancers {
+			go loadbalancers.RunLoadBalancer(l, errorChan)
+		}
 	}
 
-	return nil
+	// TODO: CHANGE THIS ASAP
+	return <-errorChan
 }
 
 func NewGoBalancer(c config.Storage) (*GoBalancer, error) {
@@ -78,12 +107,12 @@ func NewGoBalancer(c config.Storage) (*GoBalancer, error) {
 		return nil, err
 	}
 
-	alloc := addressing.NewIPPool(conf.IPPool)
+	pool := addressing.NewIPPool(conf.IPPool)
 
 	return &GoBalancer{
 		configStorage: c,
 		config:        conf,
-		allocator:     alloc,
-		services:      make(map[string]*api.Service),
+		pool:          pool,
+		services:      make(map[string]service),
 	}, nil
 }
