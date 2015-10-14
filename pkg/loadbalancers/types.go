@@ -8,17 +8,17 @@ import (
 )
 
 var (
-	types map[api.ServicePortType]func(ip net.IP, port int, backends []*Backend) LoadBalancer
+	types map[api.PortMapProtocol]func(name string, ip net.IP, portMap *api.PortMap, backends []*Backend) LoadBalancer
 
 	ErrBackendPanic        = fmt.Errorf("Panic in backend")
 	ErrBackendsUnavailable = fmt.Errorf("No backends available")
 )
 
-func AddType(name api.ServicePortType, f func(net.IP, int, []*Backend) LoadBalancer) {
+func AddType(name api.PortMapProtocol, f func(string, net.IP, *api.PortMap, []*Backend) LoadBalancer) {
 	types[name] = f
 }
 
-func GetType(name api.ServicePortType) (func(net.IP, int, []*Backend) LoadBalancer, error) {
+func GetType(name api.PortMapProtocol) (func(string, net.IP, *api.PortMap, []*Backend) LoadBalancer, error) {
 	if t, ok := types[name]; ok {
 		return t, nil
 	}
@@ -26,5 +26,5 @@ func GetType(name api.ServicePortType) (func(net.IP, int, []*Backend) LoadBalanc
 }
 
 func init() {
-	types = make(map[api.ServicePortType]func(net.IP, int, []*Backend) LoadBalancer)
+	types = make(map[api.PortMapProtocol]func(string, net.IP, *api.PortMap, []*Backend) LoadBalancer)
 }

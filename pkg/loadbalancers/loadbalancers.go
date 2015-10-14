@@ -11,43 +11,57 @@ type LoadBalancer interface {
 	Listen()
 	NewConnection(*Backend) (net.Conn, error)
 	Poll(*Backend) bool
+	Stop()
 
+	Name() string
 	Backends() []*Backend
 	ErrorChan() chan error
 	ControlChan() chan bool
 	ConnectionChan() chan net.Conn
 }
 
-func NewLoadBalancer(ip net.IP, port int, proto api.ServicePortType, backends []*api.Backend) (LoadBalancer, error) {
-	f, err := GetType(proto)
+type LoadBalancerSpec struct {
+	Name     string
+	IP       net.IP
+	PortMap  *api.PortMap
+	Backends []*api.Backend
+}
+
+func NewLoadBalancer(l LoadBalancerSpec) (LoadBalancer, error) {
+	f, err := GetType(l.PortMap.Protocol)
 
 	if err != nil {
 		return nil, err
 	}
 
-	b := make([]*Backend, len(backends))
+	b := make([]*Backend, len(l.Backends))
 
-	for i, be := range backends {
-		b[i] = &Backend{
-			Backend: be,
-		}
+	for i, be := range l.Backends {
+		b[i] = NewBackend(be)
 	}
 
-	lb := f(ip, port, b)
+	lb := f(l.Name, l.IP, l.PortMap, b)
 
 	return lb, nil
 }
 
+// TODO: There's currently no way to stop this function unless l returns an error.
+// This'll mean that we cannot gracefully exit this loop through calling the
+// loadbalancers Stop() method
 func RunLoadBalancer(l LoadBalancer, errorChan chan error) {
+	// Kick off periodically polling backends
+	for _, b := range l.Backends() {
+		go pollLoop(l, b)
+	}
+
 	go l.Listen()
 
 	for {
 		select {
 		case c := <-l.ConnectionChan():
 			go proxy(l, c)
-		case e := <-l.ErrorChan():
-			errorChan <- e
-			l.ControlChan() <- true
+		case err := <-l.ErrorChan():
+			errorChan <- err
 			return
 		}
 	}

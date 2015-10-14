@@ -2,13 +2,18 @@ package loadbalancers
 
 import (
 	"net"
+	"time"
 
 	"github.com/munnerz/gobalancer/pkg/api"
 )
 
 type Backend struct {
-	*api.Backend
+	Name         string
+	IP           net.IP
+	PollInterval time.Duration
+	PollTimeout  time.Duration
 
+	controlChan chan bool
 	healthy     bool
 	connections []*net.Conn
 }
@@ -43,4 +48,23 @@ func GetHealthyBackend(l LoadBalancer) (*Backend, error) {
 	}
 
 	return b, nil
+}
+
+func pollLoop(l LoadBalancer, b *Backend) {
+	for {
+		select {
+		case _ = <-time.After(b.PollInterval):
+			b.healthy = l.Poll(b)
+		case _ = <-b.controlChan:
+			return
+		}
+	}
+}
+
+func NewBackend(b *api.Backend) *Backend {
+	return &Backend{
+		Name:        b.Name,
+		IP:          b.IP,
+		controlChan: make(chan bool),
+	}
 }
