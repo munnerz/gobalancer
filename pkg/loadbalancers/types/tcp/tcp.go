@@ -3,12 +3,14 @@ package tcp
 import (
 	"net"
 
+	"github.com/munnerz/gobalancer/pkg/api"
 	"github.com/munnerz/gobalancer/pkg/loadbalancers"
 )
 
 type TCP struct {
-	ip   net.IP
-	port int
+	name    string
+	ip      net.IP
+	portMap *api.PortMap
 
 	backends []*loadbalancers.Backend
 
@@ -17,15 +19,24 @@ type TCP struct {
 	errorChan      chan error
 }
 
-func NewTCP(ip net.IP, port int, backends []*loadbalancers.Backend) loadbalancers.LoadBalancer {
+func NewTCP(name string, ip net.IP, portMap *api.PortMap, backends []*loadbalancers.Backend) loadbalancers.LoadBalancer {
 	return &TCP{
+		name:           name,
 		ip:             ip,
-		port:           port,
+		portMap:        portMap,
 		backends:       backends,
 		connectionChan: make(chan net.Conn),
 		controlChan:    make(chan bool),
 		errorChan:      make(chan error),
 	}
+}
+
+func (t *TCP) Stop() {
+	t.controlChan <- true
+}
+
+func (t *TCP) Name() string {
+	return t.name
 }
 
 func (t *TCP) Backends() []*loadbalancers.Backend {

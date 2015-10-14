@@ -9,9 +9,9 @@ import (
 type service struct {
 	Object
 
-	IP       *string        `json:"ip,omitempty"`
-	Ports    []*ServicePort `json:"ports"`
-	Backends []*Backend     `json:"backends"`
+	IP       *string    `json:"ip,omitempty"`
+	Ports    []*PortMap `json:"ports"`
+	Backends []*Backend `json:"backends"`
 }
 
 func (a *Service) MarshalJSON() ([]byte, error) {

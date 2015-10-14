@@ -34,24 +34,24 @@ type Backend struct {
 type Service struct {
 	Object
 
-	IP    *net.IPNet     `json:"ip,omitempty"`
-	Ports []*ServicePort `json:"ports"`
+	IP    *net.IPNet `json:"ip,omitempty"`
+	Ports []*PortMap `json:"ports"`
 
 	Backends []*Backend `json:"backends"`
 }
 
-type ServicePortType string
+type PortMapProtocol string
 
 const (
-	ServicePortTypeTCP ServicePortType = "tcp"
-	ServicePortTypeUDP ServicePortType = "udp"
+	PortMapProtocolTCP PortMapProtocol = "tcp"
+	PortMapProtocolUDP PortMapProtocol = "udp"
 )
 
 // PortMap represents a mapping between two ports
-type ServicePort struct {
+type PortMap struct {
 	Object
 
-	Type ServicePortType `json:"type"`
-	Src  int             `json:"src"`
-	Dst  int             `json:"dst"`
+	Protocol PortMapProtocol `json:"protocol"`
+	Src      int             `json:"src"`
+	Dst      int             `json:"dst"`
 }
