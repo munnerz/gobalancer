@@ -11,7 +11,7 @@ import (
 
 // Poll checks the health of the backend and updates the cached health status
 func (t *TCP) Poll(b *loadbalancers.Backend) bool {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", b.IP, t.portMap.Dst), b.PollTimeout)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", b.Hostname, t.portMap.Dst), b.PollTimeout)
 
 	if err != nil {
 		return false
@@ -24,5 +24,5 @@ func (t *TCP) Poll(b *loadbalancers.Backend) bool {
 
 func (t *TCP) NewConnection(b *loadbalancers.Backend) (net.Conn, error) {
 	log.Debugln("[%s] Creating new backend connection to: %s", t.Name(), b.Name)
-	return net.DialTimeout("tcp", fmt.Sprintf("%s:%d", b.IP, t.portMap.Dst), b.PollTimeout)
+	return net.DialTimeout("tcp", fmt.Sprintf("%s:%d", b.Hostname, t.portMap.Dst), b.PollTimeout)
 }

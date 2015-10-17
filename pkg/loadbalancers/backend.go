@@ -9,7 +9,7 @@ import (
 
 type Backend struct {
 	Name         string
-	IP           net.IP
+	Hostname     string
 	PollInterval time.Duration
 	PollTimeout  time.Duration
 
@@ -64,7 +64,7 @@ func pollLoop(l LoadBalancer, b *Backend) {
 func NewBackend(b *api.Backend) *Backend {
 	return &Backend{
 		Name:        b.Name,
-		IP:          b.IP,
+		Hostname:    b.Hostname,
 		controlChan: make(chan bool),
 	}
 }

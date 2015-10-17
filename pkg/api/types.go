@@ -26,7 +26,7 @@ type IPPool struct {
 type Backend struct {
 	Object
 
-	IP           net.IP        `json:"ip"`
+	Hostname     string        `json:"ip"`
 	PollInterval time.Duration `json:"poll_interval"`
 	PollTimeout  time.Duration `json:"poll_timeout"`
 }
