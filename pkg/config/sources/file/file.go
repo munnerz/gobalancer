@@ -42,7 +42,7 @@ func (f *File) GetConfig() (*api.Config, error) {
 
 // SaveConfig saves a Config object to a file on disk
 func (f *File) SaveConfig(c *api.Config) error {
-	data, err := json.Marshal(c)
+	data, err := json.MarshalIndent(c, "", "  ")
 
 	if err != nil {
 		return err
