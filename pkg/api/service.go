@@ -49,13 +49,16 @@ func (a *Service) UnmarshalJSON(b []byte) error {
 	}
 
 	if a2.IP != nil {
-		_, ip, err := net.ParseCIDR(*a2.IP)
+		ip, mask, err := net.ParseCIDR(*a2.IP)
 
 		if err != nil {
 			return err
 		}
 
-		a.IP = ip
+		a.IP = &net.IPNet{
+			IP:   ip,
+			Mask: mask.Mask,
+		}
 	}
 
 	a.Ports = a2.Ports
