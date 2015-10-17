@@ -1,35 +1,40 @@
 {
   "ip_pool": {
-    "service_net_dev": "en0",
-    "service_ip_range": "10.30.51.200/31"
+    "name": "main",
+    "service_net_dev": "eth1",
+    "service_net": "10.30.70.0/24",
+    "service_net_range": {
+      "start": "10.30.70.100",
+      "stop": "10.30.70.200"
+    }
   },
   "services": [
     {
-      "name": "test1",
+      "name": "owncloud",
       "ports": [
         {
           "name": "http",
           "type": "tcp",
-          "src": 8080,
-          "dst": 80
+          "src": 80,
+          "dst": 32250
         },
         {
-          "name": "ssh",
+          "name": "https",
           "type": "tcp",
-          "src": 2222,
-          "dst": 22
+          "src": 443,
+          "dst": 32251
         }
       ],
       "backends": [
         {
-          "name": "testbackend1",
-          "ip": "127.0.0.1",
+          "name": "node1",
+          "ip": "10.30.60.100",
           "poll_interval": 1000,
           "poll_timeout": 1000
         },
         {
-          "name": "testbackend2",
-          "ip": "127.0.0.2",
+          "name": "node2",
+          "ip": "10.30.60.101",
           "poll_interval": 1000,
           "poll_timeout": 1000
         }

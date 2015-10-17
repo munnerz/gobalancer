@@ -17,8 +17,10 @@ var (
 // Allocator keeps track of and monitors the IPs allocated to services
 // and is able to allocate new addresses from a pool to services
 type IPPool struct {
-	device           string
-	network          net.IPNet
+	device   string
+	network  net.IPNet
+	netRange api.IPRange
+
 	allocatedIPs     []net.IP
 	allocatedIPsLock sync.Mutex
 }
@@ -37,8 +39,10 @@ func (a *IPPool) AllocateIP() (*net.IPNet, error) {
 		}
 	}
 
+	ip := a.netRange.Start
+
 OuterLoop:
-	for ip := a.network.IP.Mask(a.network.Mask); a.network.Contains(ip); inc(ip) {
+	for ; a.network.Contains(ip); inc(ip) {
 		for _, j := range a.allocatedIPs {
 			if j.Equal(ip) {
 				continue OuterLoop
@@ -59,8 +63,9 @@ OuterLoop:
 // device name and network
 func NewIPPool(a *api.IPPool) *IPPool {
 	return &IPPool{
-		device:  a.Device,
-		network: a.Network,
+		device:   a.Device,
+		network:  a.Network,
+		netRange: a.Range,
 	}
 }
 

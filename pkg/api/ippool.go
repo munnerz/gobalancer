@@ -7,9 +7,10 @@ import (
 )
 
 type ipPool struct {
-	Name    string `json:"name"`
-	Device  string `json:"service_net_dev"`
-	Network string `json:"service_ip_range"`
+	Name    string  `json:"name"`
+	Device  string  `json:"service_net_dev"`
+	Network string  `json:"service_net"`
+	Range   IPRange `json:"service_net_range"`
 }
 
 func (a *IPPool) MarshalJSON() ([]byte, error) {
@@ -17,6 +18,7 @@ func (a *IPPool) MarshalJSON() ([]byte, error) {
 		Name:    a.Name,
 		Device:  a.Device,
 		Network: a.Network.String(),
+		Range:   a.Range,
 	}
 
 	return json.Marshal(a2)
@@ -39,6 +41,7 @@ func (a *IPPool) UnmarshalJSON(b []byte) error {
 
 	a.Device = a2.Device
 	a.Network = *network
+	a.Range = a2.Range
 
 	err = json.Unmarshal(b, &a.Object)
 
@@ -50,5 +53,5 @@ func (a *IPPool) UnmarshalJSON(b []byte) error {
 }
 
 func (a *IPPool) String() string {
-	return fmt.Sprintf("\n Device: %s\n Network: %s\n", a.Device, a.Network.String())
+	return fmt.Sprintf("\n Device: %s\n Network: %s\n, Range: %s\n", a.Device, a.Network.String(), a.Range)
 }

@@ -15,11 +15,17 @@ type Object struct {
 	Name string `json:"name"`
 }
 
+type IPRange struct {
+	Start net.IP `json:"start"`
+	Stop  net.IP `json:"stop"`
+}
+
 type IPPool struct {
 	Object
 
 	Device  string    `json:"service_net_dev"`
-	Network net.IPNet `json:"service_ip_range"`
+	Network net.IPNet `json:"service_net"`
+	Range   IPRange   `json:"service_net_range"`
 }
 
 // Backend contains configuration for a single loadbalancer backend
