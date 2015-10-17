@@ -83,6 +83,7 @@ func copyData(done chan error, src, dest net.Conn) {
 }
 
 func proxy(l LoadBalancer, conn net.Conn) (err error) {
+	defer conn.Close()
 	defer func() {
 		if r := recover(); r != nil {
 			err = ErrBackendPanic
