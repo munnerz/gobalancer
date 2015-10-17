@@ -23,6 +23,6 @@ func (t *TCP) Poll(b *loadbalancers.Backend) bool {
 }
 
 func (t *TCP) NewConnection(b *loadbalancers.Backend) (net.Conn, error) {
-	log.Debugln("[%s] Creating new backend connection to: %s", t.Name(), b.Name)
+	log.Debugf("[%s] Creating new backend connection to: %s", t.Name(), b.Name)
 	return net.DialTimeout("tcp", fmt.Sprintf("%s:%d", b.Hostname, t.portMap.Dst), b.PollTimeout)
 }
