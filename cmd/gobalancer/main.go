@@ -56,6 +56,28 @@ func main() {
 	ipPool = addressing.NewIPPool(conf.IPPool)
 
 	for i, s := range conf.Services {
+		if s.IP == nil {
+			ip, err := ipPool.AllocateIP()
+
+			if err != nil {
+				log.Errorf("Error allocating IP address for service '%s': %s", s.Name, err)
+				continue
+			}
+
+			s.IP = ip
+
+			configStorage.SaveConfig(conf)
+		}
+
+		log.Debugf("Registering: %s", s.IP)
+
+		err := ipPool.RegisterIP(*s.IP)
+
+		if err != nil {
+			log.Errorf("Error registering IP address for service '%s': %s", s.Name, err)
+			continue
+		}
+
 		services = append(services, svc.NewService(s, serviceChan))
 		go services[i].Run()
 	}
