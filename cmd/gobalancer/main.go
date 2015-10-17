@@ -9,7 +9,9 @@ import (
 	"github.com/munnerz/gobalancer/pkg/api"
 	"github.com/munnerz/gobalancer/pkg/config"
 	"github.com/munnerz/gobalancer/pkg/config/sources/file"
+	_ "github.com/munnerz/gobalancer/pkg/loadbalancers/types"
 	svc "github.com/munnerz/gobalancer/pkg/services"
+	"github.com/munnerz/gobalancer/pkg/utils"
 )
 
 var (
@@ -20,7 +22,7 @@ var (
 	conf          *api.Config
 
 	services    []*svc.Service
-	serviceChan = make(chan svc.Error)
+	serviceChan = make(chan utils.Error)
 )
 
 func main() {
@@ -86,7 +88,7 @@ func main() {
 	for {
 		select {
 		case e := <-serviceChan:
-			log.Errorf("Error from service '%s': %s", e.Service.Name, e.Error())
+			log.Errorf("Error from service '%s': %s", e.Sender.(api.Object).Name, e.Error.Error())
 		}
 	}
 }

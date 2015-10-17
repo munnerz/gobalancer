@@ -5,6 +5,8 @@ import (
 	"net"
 
 	log "github.com/Sirupsen/logrus"
+
+	"github.com/munnerz/gobalancer/pkg/loadbalancers"
 )
 
 func (t *TCP) Listen() {
@@ -33,4 +35,5 @@ func (t *TCP) Listen() {
 	}()
 
 	<-t.controlChan
+	t.errorChan <- loadbalancers.ErrLoadBalancerStopped
 }

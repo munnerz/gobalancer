@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/munnerz/gobalancer/pkg/api"
+	"github.com/munnerz/gobalancer/pkg/utils"
 )
 
 type LoadBalancer interface {
@@ -48,10 +49,7 @@ func NewLoadBalancer(l LoadBalancerSpec) (LoadBalancer, error) {
 	return lb, nil
 }
 
-// TODO: There's currently no way to stop this function unless l returns an error.
-// This'll mean that we cannot gracefully exit this loop through calling the
-// loadbalancers Stop() method
-func RunLoadBalancer(l LoadBalancer, errorChan chan error) {
+func RunLoadBalancer(l LoadBalancer, errorChan chan utils.Error) {
 	// Kick off periodically polling backends
 	for _, b := range l.Backends() {
 		go pollLoop(l, b)
@@ -64,10 +62,16 @@ func RunLoadBalancer(l LoadBalancer, errorChan chan error) {
 		case c := <-l.ConnectionChan():
 			go proxy(l, c)
 		case err := <-l.ErrorChan():
-			errorChan <- err
+			errorChan <- utils.NewError(l, err)
 			return
 		}
 	}
+}
+
+// StopLoadBalancer stops a running LoadBalancer. An ErrLoadBalancerStopped will
+// be returned on the LoadBalancers errorChan
+func StopLoadBalancer(l LoadBalancer) {
+	l.Stop()
 }
 
 func copyData(done chan error, src, dest net.Conn) {

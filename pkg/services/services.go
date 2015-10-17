@@ -7,7 +7,7 @@ import (
 
 	"github.com/munnerz/gobalancer/pkg/api"
 	"github.com/munnerz/gobalancer/pkg/loadbalancers"
-	_ "github.com/munnerz/gobalancer/pkg/loadbalancers/types"
+	"github.com/munnerz/gobalancer/pkg/utils"
 )
 
 type Service struct {
@@ -16,21 +16,9 @@ type Service struct {
 	PortMaps []*api.PortMap
 	Backends []*api.Backend
 
-	loadbalancerErrorChan chan error
-	errorChan             chan Error
+	loadbalancerErrorChan chan utils.Error
+	errorChan             chan utils.Error
 	loadbalancers         map[string]loadbalancers.LoadBalancer
-}
-
-type Error struct {
-	error
-	Service *Service
-}
-
-func (s *Service) error(err error) Error {
-	return Error{
-		error:   err,
-		Service: s,
-	}
 }
 
 func (s *Service) Run() {
@@ -44,7 +32,7 @@ func (s *Service) Run() {
 		})
 
 		if err != nil {
-			s.errorChan <- s.error(err)
+			s.errorChan <- utils.NewError(s, err)
 			return
 		}
 
@@ -58,9 +46,27 @@ func (s *Service) Run() {
 
 	for {
 		e := <-s.loadbalancerErrorChan
-		// Handle this error.. Perhaps exit the whole service for now?
-		s.errorChan <- s.error(e)
-		return
+
+		var err error
+
+		switch e.Error {
+		case loadbalancers.ErrLoadBalancerStopped:
+			log.Debugf("Stopped loadbalancer: %s", e.Sender.(loadbalancers.LoadBalancer).Name())
+		default:
+			log.Errorf("Error from loadbalancer '%s': %s", e.Sender.(loadbalancers.LoadBalancer).Name(), e.Error)
+			err = e.Error
+		}
+
+		delete(s.loadbalancers, e.Sender.(loadbalancers.LoadBalancer).Name())
+
+		if err != nil {
+			s.errorChan <- utils.NewError(s, err)
+		}
+
+		// If there are no loadbalancers left in this service, let's exit
+		if len(s.loadbalancers) == 0 {
+			return
+		}
 	}
 }
 
@@ -71,13 +77,13 @@ func (s *Service) Stop() {
 	}
 }
 
-func NewService(s *api.Service, errorChan chan Error) *Service {
+func NewService(s *api.Service, errorChan chan utils.Error) *Service {
 	return &Service{
 		Name:                  s.Name,
 		IP:                    *s.IP,
 		PortMaps:              s.Ports,
 		Backends:              s.Backends,
-		loadbalancerErrorChan: make(chan error),
+		loadbalancerErrorChan: make(chan utils.Error),
 		errorChan:             errorChan,
 		loadbalancers:         make(map[string]loadbalancers.LoadBalancer),
 	}
