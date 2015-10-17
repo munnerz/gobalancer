@@ -27,7 +27,7 @@ func (a *IPPool) RegisterIP(ipnet net.IPNet) error {
 
 	switch runtime.GOOS {
 	case "linux":
-		exec.Command("ip", "addr", "add", ipnet.String(), "dev", a.device)
+		cmd = exec.Command("ip", "addr", "add", fmt.Sprintf("%s/%s", ipnet.IP.String(), net.IP(ipnet.Mask).String()), "dev", a.device)
 	case "darwin":
 		cmd = exec.Command("ifconfig", a.device, "inet", ipnet.IP.String(), "netmask", net.IP(ipnet.Mask).String(), "alias")
 	case "windows":
