@@ -12,14 +12,14 @@ type TCP struct {
 	ip      net.IP
 	portMap *api.PortMap
 
-	backends []*loadbalancers.Backend
+	backends map[string]*loadbalancers.Backend
 
 	connectionChan chan net.Conn
 	controlChan    chan bool
 	errorChan      chan error
 }
 
-func NewTCP(name string, ip net.IP, portMap *api.PortMap, backends []*loadbalancers.Backend) loadbalancers.LoadBalancer {
+func NewTCP(name string, ip net.IP, portMap *api.PortMap, backends map[string]*loadbalancers.Backend) loadbalancers.LoadBalancer {
 	return &TCP{
 		name:           name,
 		ip:             ip,
@@ -39,7 +39,7 @@ func (t *TCP) Name() string {
 	return t.name
 }
 
-func (t *TCP) Backends() []*loadbalancers.Backend {
+func (t *TCP) Backends() map[string]*loadbalancers.Backend {
 	return t.backends
 }
 

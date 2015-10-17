@@ -14,10 +14,13 @@ type LoadBalancer interface {
 	Stop()
 
 	Name() string
-	Backends() []*Backend
+	Backends() map[string]*Backend
 	ErrorChan() chan error
 	ControlChan() chan bool
 	ConnectionChan() chan net.Conn
+
+	AddBackend(*Backend) error
+	DeleteBackend(name string) error
 }
 
 type LoadBalancerSpec struct {
@@ -34,10 +37,10 @@ func NewLoadBalancer(l LoadBalancerSpec) (LoadBalancer, error) {
 		return nil, err
 	}
 
-	b := make([]*Backend, len(l.Backends))
+	b := make(map[string]*Backend, len(l.Backends))
 
-	for i, be := range l.Backends {
-		b[i] = NewBackend(be)
+	for _, be := range l.Backends {
+		b[be.Name] = NewBackend(be)
 	}
 
 	lb := f(l.Name, l.IP, l.PortMap, b)
